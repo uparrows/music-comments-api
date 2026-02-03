@@ -56,6 +56,13 @@ def get_comments():
                 else:
                     filtered_comments.append(comment)
         
+        if not filtered_comments:
+            return jsonify({
+                "code": 200,
+                "msg": "暂无评论",
+                "body": []
+            }), 200
+        
         if order_by == 'hot':
             filtered_comments.sort(key=lambda x: x['praiseNum'], reverse=True)
         else:
@@ -77,6 +84,76 @@ def get_comments():
         return jsonify({
             "code": 200,
             "msg": "获取成功",
+            "body": response_body
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({
+            "code": 400,
+            "msg": f"参数错误: {str(e)}",
+            "body": []
+        }), 400
+    except Exception as e:
+        return jsonify({
+            "code": 500,
+            "msg": f"服务器错误: {str(e)}",
+            "body": []
+        }), 500
+
+@app.route('/api/comment/search', methods=['GET'])
+def search_comments():
+    """搜索功能，支持模糊匹配歌曲名或歌手名"""
+    try:
+        keyword = request.args.get('keyword', '').lower()
+        
+        if not keyword:
+            return jsonify({
+                "code": 400,
+                "msg": "请提供搜索关键词",
+                "body": []
+            }), 400
+        
+        all_comments = load_comments()
+        
+        matched_comments = []
+        for comment in all_comments:
+            if (keyword in comment['song_name'].lower() or 
+                keyword in comment['singer_name'].lower() or
+                keyword in comment.get('album_name', '').lower() or
+                keyword in comment['content'].lower()):
+                matched_comments.append(comment)
+        
+        if not matched_comments:
+            return jsonify({
+                "code": 200,
+                "msg": "暂无相关评论",
+                "body": []
+            }), 200
+        
+        matched_comments.sort(key=lambda x: x['createTime'], reverse=True)
+        
+        start = int(request.args.get('start', 0))
+        limit = int(request.args.get('limit', 50))
+        
+        paginated_comments = matched_comments[start:start + limit]
+        
+        response_body = []
+        for comment in paginated_comments:
+            response_body.append({
+                "nick": comment["nick"],
+                "avatarurl": comment["avatarurl"],
+                "content": comment["content"],
+                "praiseNum": comment["praiseNum"],
+                "createTime": comment["createTime"],
+                "commentId": comment["commentId"],
+                "song_name": comment["song_name"],
+                "singer_name": comment["singer_name"],
+                "album_name": comment.get("album_name", "")
+            })
+        
+        return jsonify({
+            "code": 200,
+            "msg": f"找到 {len(matched_comments)} 条相关评论",
             "body": response_body
         }), 200
         
@@ -110,6 +187,17 @@ def generate_test_data():
 def get_stats():
     comments = load_comments()
     
+    if not comments:
+        return jsonify({
+            "code": 200,
+            "msg": "暂无评论数据",
+            "body": {
+                "total_comments": 0,
+                "unique_songs": 0,
+                "song_stats": {}
+            }
+        }), 200
+    
     song_stats = {}
     for comment in comments:
         key = f"{comment['song_name']} - {comment['singer_name']}"
@@ -125,6 +213,40 @@ def get_stats():
             "unique_songs": len(song_stats),
             "song_stats": song_stats
         }
+    }), 200
+
+@app.route('/api/songs', methods=['GET'])
+def get_songs_list():
+    """获取所有支持查询的歌曲列表"""
+    comments = load_comments()
+    
+    if not comments:
+        return jsonify({
+            "code": 200,
+            "msg": "暂无歌曲数据",
+            "body": []
+        }), 200
+    
+    songs_set = set()
+    for comment in comments:
+        song_info = {
+            "song_name": comment["song_name"],
+            "singer_name": comment["singer_name"],
+            "album_name": comment.get("album_name", "")
+        }
+        songs_set.add(json.dumps(song_info, sort_keys=True))
+    
+    songs_list = []
+    for song_str in songs_set:
+        song_info = json.loads(song_str)
+        songs_list.append(song_info)
+    
+    songs_list.sort(key=lambda x: x["song_name"])
+    
+    return jsonify({
+        "code": 200,
+        "msg": f"共找到 {len(songs_list)} 首歌曲",
+        "body": songs_list
     }), 200
 
 if __name__ == '__main__':

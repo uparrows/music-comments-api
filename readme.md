@@ -4,9 +4,15 @@
 
 用法：
 1.先在nas或者服务器上构建镜像
+
 sudo docker build -t music-comments-api .
-2然后使用docker-compose或者命令
+
+2.然后使用docker-compose或者命令
+
 sudo docker run -d -p 8080:8080 --name comments-api music-comments-api 运行
+
 3.生成新的测试数据：curl -X POST "http://nasip:8080/api/comment/generate-test-data"
+
 访问地址：http://nasip:8080
+
 评论数据存储于data/comments_data.json文件中

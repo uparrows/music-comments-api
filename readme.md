@@ -12,7 +12,9 @@ sudo docker run -d -p 8080:8080 --name comments-api music-comments-api
 
 运行即可
 
-使用curl -X POST "http://nasip:8080/api/comment/generate-test-data"可生成新的测试数据
+使用curl -X POST "http://nasip:8080/api/comment/generate-test-data"
+
+可生成新的测试数据
 
 
 访问地址：http://nasip:8080
